@@ -35,17 +35,17 @@ THE SOFTWARE.
 ===============================================
 */
 
-#ifndef _MPU6050_6AXIS_MOTIONAPPS20_H_
-#define _MPU6050_6AXIS_MOTIONAPPS20_H_
+#ifndef _MPU6050_6AXIS_MOTIONAPPS612_H_
+#define _MPU6050_6AXIS_MOTIONAPPS612_H_
 
 // take ownership of the "MPU6050" typedef
 #define I2CDEVLIB_MPU6050_TYPEDEF
 
 #include "MPU6050.h"
 
-class MPU6050_6Axis_MotionApps20 : public MPU6050_Base {
+class MPU6050_6Axis_MotionApps612 : public MPU6050_Base {
     public:
-        MPU6050_6Axis_MotionApps20(uint8_t address=MPU6050_DEFAULT_ADDRESS, void *wireObj=0) : MPU6050_Base(address, wireObj) { }
+        MPU6050_6Axis_MotionApps612(uint8_t address=MPU6050_DEFAULT_ADDRESS, void *wireObj=0) : MPU6050_Base(address, wireObj) { }
 
         uint8_t dmpInitialize();
         bool dmpPacketAvailable();
@@ -96,10 +96,10 @@ class MPU6050_6Axis_MotionApps20 : public MPU6050_Base {
         uint8_t dmpGetLinearAccel(int16_t *data, const uint8_t* packet=0);
         uint8_t dmpGetLinearAccel(VectorInt16 *v, const uint8_t* packet=0);
         uint8_t dmpGetLinearAccel(VectorInt16 *v, VectorInt16 *vRaw, VectorFloat *gravity);
-        uint8_t dmpConvertToWorldFrame(int32_t *data, const uint8_t* packet=0);
-        uint8_t dmpConvertToWorldFrame(int16_t *data, const uint8_t* packet=0);
-        uint8_t dmpConvertToWorldFrame(VectorInt16 *v, const uint8_t* packet=0);
-        uint8_t dmpConvertToWorldFrame(VectorInt16 *v, VectorInt16 *vReal, Quaternion *q);
+        uint8_t dmpGetLinearAccelInWorld(int32_t *data, const uint8_t* packet=0);
+        uint8_t dmpGetLinearAccelInWorld(int16_t *data, const uint8_t* packet=0);
+        uint8_t dmpGetLinearAccelInWorld(VectorInt16 *v, const uint8_t* packet=0);
+        uint8_t dmpGetLinearAccelInWorld(VectorInt16 *v, VectorInt16 *vReal, Quaternion *q);
         uint8_t dmpGetGyroAndAccelSensor(int32_t *data, const uint8_t* packet=0);
         uint8_t dmpGetGyroAndAccelSensor(int16_t *data, const uint8_t* packet=0);
         uint8_t dmpGetGyroAndAccelSensor(VectorInt16 *g, VectorInt16 *a, const uint8_t* packet=0);
@@ -148,7 +148,6 @@ class MPU6050_6Axis_MotionApps20 : public MPU6050_Base {
         uint16_t dmpPacketSize;
 };
 
-typedef MPU6050_6Axis_MotionApps20 MPU6050;
+typedef MPU6050_6Axis_MotionApps612 MPU6050;
 
-
-#endif /* _MPU6050_6AXIS_MOTIONAPPS20_H_ */
+#endif /* _MPU6050_6AXIS_MOTIONAPPS612_H_ */

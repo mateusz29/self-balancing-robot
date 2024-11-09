@@ -4,6 +4,9 @@
 //
 // Changelog:
 //     2012-06-20 - initial release
+//     2016-10-28 - Changed to bi-plane 3d model based on tutorial at  
+//                  https://forum.processing.org/two/discussion/24350/display-obj-file-in-3d
+//                  https://opengameart.org/content/low-poly-biplane
 
 /* ============================================
 I2Cdev device library code is placed under the MIT license
@@ -30,7 +33,7 @@ THE SOFTWARE.
 */
 
 import processing.serial.*;
-import processing.opengl.*;
+//import processing.opengl.*;
 import toxi.geom.*;
 import toxi.processing.*;
 
@@ -55,9 +58,12 @@ float[] gravity = new float[3];
 float[] euler = new float[3];
 float[] ypr = new float[3];
 
+
+PShape plane; // 3d model
+
 void setup() {
-    // 300px square viewport using OpenGL rendering
-    size(300, 300, OPENGL);
+    // 640x480 px square viewport 
+    size(640, 480, P3D);
     gfx = new ToxiclibsSupport(this);
 
     // setup lights and antialiasing
@@ -67,11 +73,8 @@ void setup() {
     // display serial port list for debugging/clarity
     println(Serial.list());
 
-    // get the first available port (use EITHER this OR the specific port code below)
-    String portName = Serial.list()[0];
-    
-    // get a specific serial port (use EITHER this OR the first-available code above)
-    //String portName = "COM4";
+    // get a specific serial port
+    String portName = "COM12";
     
     // open the serial port
     port = new Serial(this, portName, 115200);
@@ -79,6 +82,21 @@ void setup() {
     // send single character to trigger DMP init/start
     // (expected by MPU6050_DMP6 example Arduino sketch)
     port.write('r');
+        
+    // Load Plane object
+    // The file must be in the \data folder
+    // of the current sketch to load successfully
+    plane = loadShape("biplane.obj"); 
+ 
+ 
+    // apply its texture and set orientation 
+    PImage img1=loadImage("diffuse_512.png");
+    plane.setTexture(img1);
+    plane.scale(30);
+    plane.rotateX(PI);
+    plane.rotateY(PI+HALF_PI);
+
+      
 }
 
 void draw() {
@@ -88,19 +106,14 @@ void draw() {
         port.write('r');
         interval = millis();
     }
-    
+
     // black background
     background(0);
-    
+   
+      
     // translate everything to the middle of the viewport
     pushMatrix();
     translate(width / 2, height / 2);
-
-    // 3-step rotation from yaw/pitch/roll angles (gimbal lock!)
-    // ...and other weirdness I haven't figured out yet
-    //rotateY(-ypr[0]);
-    //rotateZ(-ypr[1]);
-    //rotateX(-ypr[2]);
 
     // toxiclibs direct angle/axis rotation from quaternion (NO gimbal lock!)
     // (axis order [1, 3, 2] and inversion [-1, +1, +1] is a consequence of
@@ -109,34 +122,8 @@ void draw() {
     float[] axis = quat.toAxisAngle();
     rotate(axis[0], -axis[1], axis[3], axis[2]);
 
-    // draw main body in red
-    fill(255, 0, 0, 200);
-    box(10, 10, 200);
-    
-    // draw front-facing tip in blue
-    fill(0, 0, 255, 200);
-    pushMatrix();
-    translate(0, 0, -120);
-    rotateX(PI/2);
-    drawCylinder(0, 20, 20, 8);
-    popMatrix();
-    
-    // draw wings and tail fin in green
-    fill(0, 255, 0, 200);
-    beginShape(TRIANGLES);
-    vertex(-100,  2, 30); vertex(0,  2, -80); vertex(100,  2, 30);  // wing top layer
-    vertex(-100, -2, 30); vertex(0, -2, -80); vertex(100, -2, 30);  // wing bottom layer
-    vertex(-2, 0, 98); vertex(-2, -30, 98); vertex(-2, 0, 70);  // tail left layer
-    vertex( 2, 0, 98); vertex( 2, -30, 98); vertex( 2, 0, 70);  // tail right layer
-    endShape();
-    beginShape(QUADS);
-    vertex(-100, 2, 30); vertex(-100, -2, 30); vertex(  0, -2, -80); vertex(  0, 2, -80);
-    vertex( 100, 2, 30); vertex( 100, -2, 30); vertex(  0, -2, -80); vertex(  0, 2, -80);
-    vertex(-100, 2, 30); vertex(-100, -2, 30); vertex(100, -2,  30); vertex(100, 2,  30);
-    vertex(-2,   0, 98); vertex(2,   0, 98); vertex(2, -30, 98); vertex(-2, -30, 98);
-    vertex(-2,   0, 98); vertex(2,   0, 98); vertex(2,   0, 70); vertex(-2,   0, 70);
-    vertex(-2, -30, 98); vertex(2, -30, 98); vertex(2,   0, 70); vertex(-2,   0, 70);
-    endShape();
+    // draw plane
+    shape(plane, 0, 0);    
     
     popMatrix();
 }
@@ -173,7 +160,7 @@ void serialEvent(Serial port) {
                 // set our toxilibs quaternion to new data
                 quat.set(q[0], q[1], q[2], q[3]);
 
-                /*
+                
                 // below calculations unnecessary for orientation only using toxilibs
                 
                 // calculate gravity vector
@@ -192,51 +179,11 @@ void serialEvent(Serial port) {
                 ypr[2] = atan(gravity[1] / sqrt(gravity[0]*gravity[0] + gravity[2]*gravity[2]));
     
                 // output various components for debugging
-                //println("q:\t" + round(q[0]*100.0f)/100.0f + "\t" + round(q[1]*100.0f)/100.0f + "\t" + round(q[2]*100.0f)/100.0f + "\t" + round(q[3]*100.0f)/100.0f);
-                //println("euler:\t" + euler[0]*180.0f/PI + "\t" + euler[1]*180.0f/PI + "\t" + euler[2]*180.0f/PI);
-                //println("ypr:\t" + ypr[0]*180.0f/PI + "\t" + ypr[1]*180.0f/PI + "\t" + ypr[2]*180.0f/PI);
-                */
+                println("q:\t" + round(q[0]*100.0f)/100.0f + "\t" + round(q[1]*100.0f)/100.0f + "\t" + round(q[2]*100.0f)/100.0f + "\t" + round(q[3]*100.0f)/100.0f);
+                println("euler:\t" + euler[0]*180.0f/PI + "\t" + euler[1]*180.0f/PI + "\t" + euler[2]*180.0f/PI);
+                println("ypr:\t" + ypr[0]*180.0f/PI + "\t" + ypr[1]*180.0f/PI + "\t" + ypr[2]*180.0f/PI);
+                
             }
         }
-    }
-}
-
-void drawCylinder(float topRadius, float bottomRadius, float tall, int sides) {
-    float angle = 0;
-    float angleIncrement = TWO_PI / sides;
-    beginShape(QUAD_STRIP);
-    for (int i = 0; i < sides + 1; ++i) {
-        vertex(topRadius*cos(angle), 0, topRadius*sin(angle));
-        vertex(bottomRadius*cos(angle), tall, bottomRadius*sin(angle));
-        angle += angleIncrement;
-    }
-    endShape();
-    
-    // If it is not a cone, draw the circular top cap
-    if (topRadius != 0) {
-        angle = 0;
-        beginShape(TRIANGLE_FAN);
-        
-        // Center point
-        vertex(0, 0, 0);
-        for (int i = 0; i < sides + 1; i++) {
-            vertex(topRadius * cos(angle), 0, topRadius * sin(angle));
-            angle += angleIncrement;
-        }
-        endShape();
-    }
-  
-    // If it is not a cone, draw the circular bottom cap
-    if (bottomRadius != 0) {
-        angle = 0;
-        beginShape(TRIANGLE_FAN);
-    
-        // Center point
-        vertex(0, tall, 0);
-        for (int i = 0; i < sides + 1; i++) {
-            vertex(bottomRadius * cos(angle), tall, bottomRadius * sin(angle));
-            angle += angleIncrement;
-        }
-        endShape();
     }
 }

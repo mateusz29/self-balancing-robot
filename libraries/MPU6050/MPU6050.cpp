@@ -36,15 +36,7 @@ THE SOFTWARE.
 ===============================================
 */
 
-#include "Arduino.h"
 #include "MPU6050.h"
-#if defined(ARDUINO_ARCH_MBED)
-#include "api/deprecated-avr-comp/avr/dtostrf.c.impl"
-#endif
-
-#ifndef DEBUG
-// #define DEBUG 0  // Uncomment to enable debug output
-#endif
 
 /** Specific address constructor.
  * @param address I2C address, uses default I2C address if none is specified
@@ -64,97 +56,9 @@ MPU6050_Base::MPU6050_Base(uint8_t address, void *wireObj):devAddr(address), wir
  */
 void MPU6050_Base::initialize() {
     setClockSource(MPU6050_CLOCK_PLL_XGYRO);
-
     setFullScaleGyroRange(MPU6050_GYRO_FS_250);
-    gyroscopeResolution = 250.0 / 16384.0;
-
     setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
-    accelerationResolution = 2.0 / 16384.0;
-
     setSleepEnabled(false); // thanks to Jack Elston for pointing this one out!
-}
-
-/** Power on and prepare for general usage.
- * This will activate the device and take it out of sleep mode (which must be done
- * after start-up). This function also sets both the accelerometer and the gyroscope
- * to selected settings based on user perference. selection can be one of ,
- * 
- * Accelerometer: ACCEL_FS::A2G, ACCEL_FS::A4G, ACCEL_FS::A8G, ACCEL_FS::A16G, 
- * Gyroscope: GYRO_FS::G250DPS, GYRO_FS::G500DPS, GYRO_FS::G1000DPS, GYRO_FS::G2000DPS, 
- * 
- * the clock source to use the X Gyro for reference, which is slightly better than
- * the default internal clock source.
- */
-void MPU6050_Base::initialize(ACCEL_FS accelRange, GYRO_FS gyroRange) {
-    setClockSource(MPU6050_CLOCK_PLL_XGYRO);
-
-    switch (accelRange) 
-    {
-    case ACCEL_FS::A2G:
-        setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
-        accelerationResolution = 2.0 / 16384.0;
-	break;
-
-    case ACCEL_FS::A4G:
-        setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
-        accelerationResolution = 4.0 / 16384.0;
-	break;
-
-    case ACCEL_FS::A8G:
-        setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
-        accelerationResolution = 8.0 / 16384.0;
-	break;
-
-    case ACCEL_FS::A16G:
-        setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
-        accelerationResolution = 16.0 / 16384.0;
-	break;
-    default:
-      Serial.println("Init accelRange not valid, setting maximum accel range");
-      setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
-      accelerationResolution = 16.0 / 16384.0;
-    }
-
-    switch (gyroRange) 
-    {
-    case GYRO_FS::G250DPS:
-        setFullScaleGyroRange(MPU6050_GYRO_FS_250);
-        gyroscopeResolution = 250.0 / 16384.0;
-	break;
-
-    case GYRO_FS::G500DPS:
-        setFullScaleGyroRange(MPU6050_GYRO_FS_500);
-        gyroscopeResolution = 500.0 / 16384.0;
-	break;
-
-    case GYRO_FS::G1000DPS:
-        setFullScaleGyroRange(MPU6050_GYRO_FS_1000);
-        gyroscopeResolution = 1000.0 / 16384.0;
-	break;
-
-    case GYRO_FS::G2000DPS:
-        setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-        gyroscopeResolution = 2000.0 / 16384.0;
-	break;
-    default:
-      Serial.println("Init gyroRange not valid, setting maximum gyro range");
-      setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-      gyroscopeResolution = 2000.0 / 16384.0;
-    }
-
-    setSleepEnabled(false); // thanks to Jack Elston for pointing this one out!
-}
-
-/** Get the accelration resolution.
- */
-float MPU6050_Base::get_acce_resolution() {
-    return accelerationResolution;
-}
-
-/** Get the gyroscope resolution.
- */
-float MPU6050_Base::get_gyro_resolution() {
-    return gyroscopeResolution;
 }
 
 /** Verify the I2C connection.
@@ -162,8 +66,7 @@ float MPU6050_Base::get_gyro_resolution() {
  * @return True if connection is valid, false otherwise
  */
 bool MPU6050_Base::testConnection() {
-  uint8_t deviceId = getDeviceID();
-  return (deviceId == 0x34) || (deviceId == 0xC);
+    return getDeviceID() == 0x34;
 }
 
 // AUX_VDDIO register (InvenSense demo code calls this RA_*G_OFFS_TC)
