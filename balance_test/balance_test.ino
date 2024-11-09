@@ -1,8 +1,31 @@
-#include <MPU6050.h>
+#include <PID_v1.h>
+#include <LMotorController.h>
+#include <I2Cdev.h>
+#include <MPU6050_6Axis_MotionApps20.h>
 #include <SoftwareSerial.h>
 
+#define MIN_ABSOLUTE_SPEED 10
+
 MPU6050 mpu;
-SoftwareSerial Bluetooth(0, 1); // TX, RX
+SoftwareSerial Bluetooth(A2, A3); // TX, RX
+
+bool dmpReady = false;
+uint8_t fifoBuffer[64];
+
+Quaternion q; // [w, x, y, z]
+VectorFloat gravity; // [x, y, z]
+float ypr[3]; // [yaw, pitch, roll]
+
+// PID
+double angle = -7;
+double input, output;
+double powerLimit1 = 0.7;
+double powerLimit2 = 0.6;
+
+double Kp = 20;   
+double Kd = 0.8;
+double Ki = 180;
+PID pid(&input, &output, &angle, Kp, Ki, Kd, DIRECT);
 
 const int motor1Pin1 = 6; // IN1
 const int motor1Pin2 = 7; // IN2
@@ -11,21 +34,17 @@ const int motor2Pin2 = 9; // IN4
 const int enable1Pin = 5; // ENA
 const int enable2Pin = 10; // ENB 
 
-// PID constants
-float Kp = 7;
-float Kd = 1;
-float Ki = 10;
+volatile bool mpuInterrupt = false;
+void dmpDataReady()
+{
+  mpuInterrupt = true;
+}
 
-//float deadband = 10.0;
-float setpoint = 0;
-float input, output;
-float previousError = 0;
-float integral = 0;
+void setup()
+{
+  Serial.begin(9600);
+  Bluetooth.begin(9600);
 
-unsigned long lastTime;
-float powerLimit = 1;
-
-void setup() {  
   pinMode(motor1Pin1, OUTPUT);
   pinMode(motor1Pin2, OUTPUT);
   pinMode(motor2Pin1, OUTPUT);
@@ -34,10 +53,7 @@ void setup() {
   pinMode(enable2Pin, OUTPUT);
 
   mpu.initialize();
-
-  Serial.begin(9600);
-  Bluetooth.begin(9600);
-
+  
   mpu.setXAccelOffset(540);
   mpu.setYAccelOffset(1301);
   mpu.setZAccelOffset(1326);
@@ -45,77 +61,107 @@ void setup() {
   mpu.setYGyroOffset(-46);
   mpu.setZGyroOffset(31);
 
-  lastTime = millis();
+  if (mpu.dmpInitialize() == 0)
+  {
+    mpu.setDMPEnabled(true);
+    attachInterrupt(0, dmpDataReady, RISING);
+    dmpReady = true;
+
+    pid.SetMode(AUTOMATIC);
+    pid.SetSampleTime(10);
+    pid.SetOutputLimits(-255, 255); 
+  }
+  else
+  {
+    Serial.print("Failed to initialize dmp!");
+  }
 }
 
-void loop() {
-  // if (Bluetooth.available()) {
-  //   char command = Bluetooth.read();
-  //   switch (command) {
-  //     case 'F': // Move robot forward
-  //       Bluetooth.println("Moving the robot forward");
-  //       break;
-  //     case 'S': // Stop robot
-  //       Bluetooth.println("Stopping the robot in place");
-  //       break;
-  //     case 'R': // Turn robot right
-  //       Bluetooth.println("Turning the robot right");
-  //       //turnRight();
-  //       break;
-  //     case 'L': // Turn robot left
-  //       Bluetooth.println("Turning the robot left");
-  //       //turnLeft();
-  //       break;
-  //     default:
-  //       Bluetooth.println("Command not recognized");
-  //       break;
-  //   }
-  // }
+void loop()
+{
+  if (!dmpReady) return;
 
-  unsigned long currentTime = millis();
-  float elapsedTime = (currentTime - lastTime) / 1000.0;
-
-  int16_t ax, ay, az;
-  int16_t gx, gy, gz;
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-  // Calculate angle 
-  input = atan2(ax, az) * 180 / PI;
-
-  // PID control
-  float error = setpoint - input;
-  // if (abs(error) < deadband) {
-  //   error = 0;
-  // }
-
-  integral += error * elapsedTime;
-  float derivative = (error - previousError) / elapsedTime;
-  output = Kp * error + Ki * integral + Kd * derivative;
-  output = constrain(output, -255, 255);
-  output *= powerLimit;
-
-  if (output > 0) {
-    // Move backwards
-    analogWrite(enable1Pin, output);
-    digitalWrite(motor1Pin1, HIGH);
-    digitalWrite(motor1Pin2, LOW);
-
-    analogWrite(enable2Pin, output);
-    digitalWrite(motor2Pin1, HIGH);
-    digitalWrite(motor2Pin2, LOW);
-  } else {
-    // Move forwards
-    analogWrite(enable1Pin, -output);
-    digitalWrite(motor1Pin1, LOW);
-    digitalWrite(motor1Pin2, HIGH);
-
-    analogWrite(enable2Pin, -output);
-    digitalWrite(motor2Pin1, LOW);
-    digitalWrite(motor2Pin2, HIGH);
+  if (Bluetooth.available())
+  {
+    char command = Bluetooth.read();
+    switch (command)
+    {
+      case 'F':
+        Bluetooth.println("Moving the robot forward");
+        moveForward();
+        break;
+      case 'B':
+        Bluetooth.println("Moving the robot backward");
+        moveBackward();
+        break;
+      case 'R':
+        Bluetooth.println("Turning the robot right");
+        turnRight();
+        break;
+      case 'L':
+        Bluetooth.println("Turning the robot left");
+        turnLeft();
+        break;
+      case 'S':
+        Bluetooth.println("Balancing in place");
+        balance(0);
+      default:
+        Bluetooth.println("Command not recognized");
+        break;
+    }
   }
 
-  previousError = error;
-  lastTime = currentTime;
+  if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
+  {
+    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    mpu.dmpGetGravity(&gravity, &q);
+    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
-  delay(10);
+    input = ypr[1] * 180/M_PI;
+    Serial.println(input);
+    pid.Compute();
+
+    balance(output);
+  }
+}
+
+void balance(int output)
+{
+  // if (output > 0)
+  // {
+  //   digitalWrite(motor1Pin1, HIGH);
+  //   digitalWrite(motor1Pin2, LOW);
+  //   digitalWrite(motor2Pin1, HIGH);
+  //   digitalWrite(motor2Pin2, LOW);
+  // }
+  // else
+  // {
+  //   digitalWrite(motor1Pin1, LOW);
+  //   digitalWrite(motor1Pin2, HIGH);
+  //   digitalWrite(motor2Pin1, LOW);
+  //   digitalWrite(motor2Pin2, HIGH);
+  // }
+
+  // output = abs(output);
+  
+  // analogWrite(enable1Pin, output * powerLimit1);
+  // analogWrite(enable2Pin, output * powerLimit2);
+
+  if (output < 0)
+  {
+    output = min(output, -1*MIN_ABSOLUTE_SPEED);
+  }
+  else if (output > 0)
+  {
+    output = max(output, MIN_ABSOLUTE_SPEED);
+  }
+
+  int realOutput = map(abs(output), 0, 255, MIN_ABSOLUTE_SPEED, 255);
+
+  digitalWrite(motor1Pin1, output > 0 ? HIGH : LOW);
+  digitalWrite(motor1Pin2, output > 0 ? LOW : HIGH);
+  digitalWrite(motor2Pin1, output > 0 ? HIGH : LOW);
+  digitalWrite(motor2Pin2, output > 0 ? LOW : HIGH);
+  analogWrite(enable1Pin, realOutput * powerLimit1);
+  analogWrite(enable2Pin, realOutput * powerLimit2);
 }
