@@ -6,12 +6,6 @@
     android:padding="16dp">
 
     <Button
-        android:id="@+id/btnEnableBt"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Enable Bluetooth" />
-
-    <Button
         android:id="@+id/btnScan"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -26,13 +20,105 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/tvAngle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Angle: -6"/>
+        <Button
+            android:id="@+id/btnSendAngle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send Angle"/>
+    </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seekBarAngle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/tvP"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="P: 20"/>
+        <Button
+            android:id="@+id/btnSendP"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send P"/>
+    </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seekBarP"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/tvI"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="I: 200"/>
+        <Button
+            android:id="@+id/btnSendI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send I"/>
+    </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seekBarI"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/tvD"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="D: 1.2"/>
+        <Button
+            android:id="@+id/btnSendD"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send D"/>
+    </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seekBarD"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center">
 
         <Button
             android:id="@+id/btnForward"
             android:layout_width="120dp"
-            android:layout_height="120dp"
+            android:layout_height="100dp"
             android:text="Forward" />
 
         <LinearLayout
@@ -43,26 +129,26 @@
             <Button
                 android:id="@+id/btnLeft"
                 android:layout_width="120dp"
-                android:layout_height="120dp"
+                android:layout_height="100dp"
                 android:text="Left" />
 
             <Button
                 android:id="@+id/btnStop"
                 android:layout_width="120dp"
-                android:layout_height="120dp"
+                android:layout_height="100dp"
                 android:text="Stop" />
 
             <Button
                 android:id="@+id/btnRight"
                 android:layout_width="120dp"
-                android:layout_height="120dp"
+                android:layout_height="100dp"
                 android:text="Right" />
         </LinearLayout>
 
         <Button
             android:id="@+id/btnBackward"
             android:layout_width="120dp"
-            android:layout_height="120dp"
+            android:layout_height="100dp"
             android:text="Backward" />
     </LinearLayout>
 

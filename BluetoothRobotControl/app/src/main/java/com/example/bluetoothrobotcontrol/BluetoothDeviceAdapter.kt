@@ -29,17 +29,12 @@ class BluetoothDeviceAdapter(
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             textView.text = "${device.name ?: "Unknown Device"} (${device.address})"
-        } else {
-            textView.text = "Unknown Device (${device.address})"
         }
 
         return view
     }
+
     override fun getItem(position: Int): BluetoothDevice {
         return devices[position]
-    }
-
-    override fun getCount(): Int {
-        return devices.size
     }
 }

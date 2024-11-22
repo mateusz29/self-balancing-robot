@@ -5,13 +5,13 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ListView
+import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import java.io.IOException
@@ -21,7 +21,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var deviceListView: ListView
-    private lateinit var btnEnableBt: Button
     private lateinit var btnScan: Button
     private lateinit var btnForward: Button
     private lateinit var btnBackward: Button
@@ -29,18 +28,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnRight: Button
     private lateinit var btnStop: Button
 
-    private var bluetoothSocket: BluetoothSocket? = null
-    private val UUID_HC05 = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // HC-05 default UUID
+    private lateinit var seekBarAngle: SeekBar
+    private lateinit var seekBarP: SeekBar
+    private lateinit var seekBarI: SeekBar
+    private lateinit var seekBarD: SeekBar
+    private lateinit var tvAngle: TextView
+    private lateinit var tvP: TextView
+    private lateinit var tvI: TextView
+    private lateinit var tvD: TextView
 
-    private val enableBluetoothLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            Toast.makeText(this, "Bluetooth enabled", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Bluetooth wasn't enabled", Toast.LENGTH_SHORT).show()
-        }
-    }
+    private var bluetoothSocket: BluetoothSocket? = null
+    private val UUID_HC05 = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,24 +49,39 @@ class MainActivity : AppCompatActivity() {
 
         initializeUI()
         setupClickListeners()
+        setupSliderListeners()
     }
 
     private fun initializeUI() {
         deviceListView = findViewById(R.id.deviceListView)
-        btnEnableBt = findViewById(R.id.btnEnableBt)
         btnScan = findViewById(R.id.btnScan)
         btnForward = findViewById(R.id.btnForward)
         btnBackward = findViewById(R.id.btnBackward)
         btnLeft = findViewById(R.id.btnLeft)
         btnRight = findViewById(R.id.btnRight)
         btnStop = findViewById(R.id.btnStop)
+
+        seekBarAngle = findViewById(R.id.seekBarAngle)
+        seekBarP = findViewById(R.id.seekBarP)
+        seekBarI = findViewById(R.id.seekBarI)
+        seekBarD = findViewById(R.id.seekBarD)
+
+        tvAngle = findViewById(R.id.tvAngle)
+        tvP = findViewById(R.id.tvP)
+        tvI = findViewById(R.id.tvI)
+        tvD = findViewById(R.id.tvD)
+
+        seekBarAngle.max = 60
+        seekBarAngle.progress = 24
+        seekBarP.max = 100
+        seekBarP.progress = 20
+        seekBarI.max = 500
+        seekBarI.progress = 200
+        seekBarD.max = 50
+        seekBarD.progress = 12
     }
 
     private fun setupClickListeners() {
-        btnEnableBt.setOnClickListener {
-            enableBluetooth()
-        }
-
         btnScan.setOnClickListener {
             if (!bluetoothAdapter.isEnabled) {
                 Toast.makeText(this, "Please enable Bluetooth first", Toast.LENGTH_SHORT).show()
@@ -83,25 +96,67 @@ class MainActivity : AppCompatActivity() {
         btnRight.setOnClickListener { sendCommand("R") }
         btnStop.setOnClickListener { sendCommand("S") }
 
+        findViewById<Button>(R.id.btnSendAngle).setOnClickListener {
+            val angle = seekBarAngle.progress - 30
+            sendCommand("A$angle")
+        }
+
+        findViewById<Button>(R.id.btnSendP).setOnClickListener {
+            val p = seekBarP.progress
+            sendCommand("P1$p")
+        }
+
+        findViewById<Button>(R.id.btnSendI).setOnClickListener {
+            val i = seekBarI.progress
+            sendCommand("P2$i")
+        }
+
+        findViewById<Button>(R.id.btnSendD).setOnClickListener {
+            val dValue = seekBarD.progress / 10.0
+            sendCommand("P3%.1f".format(dValue))
+        }
+
+
         deviceListView.setOnItemClickListener { _, _, position, _ ->
             val device = deviceListView.adapter.getItem(position) as BluetoothDevice
             connectToDevice(device)
         }
     }
 
-    private fun enableBluetooth() {
-        if (!bluetoothAdapter.isEnabled) {
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                enableBluetoothLauncher.launch(enableBtIntent)
-            } else {
-                requestBluetoothPermissions()
+    private fun setupSliderListeners() {
+        seekBarAngle.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val angle = progress - 30
+                tvAngle.text = getString(R.string.angle_text, angle)
             }
-        } else {
-            Toast.makeText(this, "Bluetooth is already enabled", Toast.LENGTH_SHORT).show()
-        }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        seekBarP.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvP.text = getString(R.string.p_text, progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        seekBarI.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvI.text = getString(R.string.i_text, progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        seekBarD.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val dValue = progress / 10.0
+                tvD.text = getString(R.string.d_text, dValue)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     private fun scanForDevices() {

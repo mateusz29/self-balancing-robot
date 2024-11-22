@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">BluetoothRobotControl</string>
+    <string name="angle_text">Angle: %1$d</string>
+    <string name="p_text">P: %1$d</string>
+    <string name="i_text">I: %1$d</string>
+    <string name="d_text">D: %1$.1f</string>
 </resources>
