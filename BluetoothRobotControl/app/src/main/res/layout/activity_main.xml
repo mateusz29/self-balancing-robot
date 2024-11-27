@@ -23,20 +23,20 @@
         android:orientation="horizontal"
         android:gravity="center_vertical">
         <TextView
-            android:id="@+id/tvAngle"
+            android:id="@+id/tvBalancePoint"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Angle: -6"/>
+            android:text="Balance point: -5.0"/>
         <Button
-            android:id="@+id/btnSendAngle"
+            android:id="@+id/btnSendBalancePoint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send Angle"/>
+            android:text="Send"/>
     </LinearLayout>
 
     <SeekBar
-        android:id="@+id/seekBarAngle"
+        android:id="@+id/seekBarBalancePoint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
@@ -55,7 +55,7 @@
             android:id="@+id/btnSendP"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send P"/>
+            android:text="Send"/>
     </LinearLayout>
 
     <SeekBar
@@ -78,7 +78,7 @@
             android:id="@+id/btnSendI"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send I"/>
+            android:text="Send"/>
     </LinearLayout>
 
     <SeekBar
@@ -101,7 +101,7 @@
             android:id="@+id/btnSendD"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send D"/>
+            android:text="Send"/>
     </LinearLayout>
 
     <SeekBar

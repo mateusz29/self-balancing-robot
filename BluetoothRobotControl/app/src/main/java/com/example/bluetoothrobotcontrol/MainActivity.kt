@@ -28,11 +28,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnRight: Button
     private lateinit var btnStop: Button
 
-    private lateinit var seekBarAngle: SeekBar
+    private lateinit var seekBarBalancePoint: SeekBar
     private lateinit var seekBarP: SeekBar
     private lateinit var seekBarI: SeekBar
     private lateinit var seekBarD: SeekBar
-    private lateinit var tvAngle: TextView
+    private lateinit var tvBalancePoint: TextView
     private lateinit var tvP: TextView
     private lateinit var tvI: TextView
     private lateinit var tvD: TextView
@@ -61,18 +61,18 @@ class MainActivity : AppCompatActivity() {
         btnRight = findViewById(R.id.btnRight)
         btnStop = findViewById(R.id.btnStop)
 
-        seekBarAngle = findViewById(R.id.seekBarAngle)
+        seekBarBalancePoint = findViewById(R.id.seekBarBalancePoint)
         seekBarP = findViewById(R.id.seekBarP)
         seekBarI = findViewById(R.id.seekBarI)
         seekBarD = findViewById(R.id.seekBarD)
 
-        tvAngle = findViewById(R.id.tvAngle)
+        tvBalancePoint = findViewById(R.id.tvBalancePoint)
         tvP = findViewById(R.id.tvP)
         tvI = findViewById(R.id.tvI)
         tvD = findViewById(R.id.tvD)
 
-        seekBarAngle.max = 60
-        seekBarAngle.progress = 24
+        seekBarBalancePoint.max = 40
+        seekBarBalancePoint.progress = 30
         seekBarP.max = 100
         seekBarP.progress = 20
         seekBarI.max = 500
@@ -90,30 +90,30 @@ class MainActivity : AppCompatActivity() {
             scanForDevices()
         }
 
-        btnForward.setOnClickListener { sendCommand("F") }
-        btnBackward.setOnClickListener { sendCommand("B") }
-        btnLeft.setOnClickListener { sendCommand("L") }
-        btnRight.setOnClickListener { sendCommand("R") }
-        btnStop.setOnClickListener { sendCommand("S") }
+        btnForward.setOnClickListener { sendCommand("F\n") }
+        btnBackward.setOnClickListener { sendCommand("B\n") }
+        btnLeft.setOnClickListener { sendCommand("L\n") }
+        btnRight.setOnClickListener { sendCommand("R\n") }
+        btnStop.setOnClickListener { sendCommand("S\n") }
 
-        findViewById<Button>(R.id.btnSendAngle).setOnClickListener {
-            val angle = seekBarAngle.progress - 30
-            sendCommand("A$angle")
+        findViewById<Button>(R.id.btnSendBalancePoint).setOnClickListener {
+            val balance_point = (seekBarBalancePoint.progress - 20) / 2.0
+            sendCommand("A$balance_point\n")
         }
 
         findViewById<Button>(R.id.btnSendP).setOnClickListener {
             val p = seekBarP.progress
-            sendCommand("P1$p")
+            sendCommand("P$p\n")
         }
 
         findViewById<Button>(R.id.btnSendI).setOnClickListener {
             val i = seekBarI.progress
-            sendCommand("P2$i")
+            sendCommand("I$i\n")
         }
 
         findViewById<Button>(R.id.btnSendD).setOnClickListener {
             val dValue = seekBarD.progress / 10.0
-            sendCommand("P3%.1f".format(dValue))
+            sendCommand("D%.1f\n".format(dValue))
         }
 
 
@@ -124,10 +124,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSliderListeners() {
-        seekBarAngle.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        seekBarBalancePoint.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val angle = progress - 30
-                tvAngle.text = getString(R.string.angle_text, angle)
+                val balance_point = (progress - 20) / 2.0
+                tvBalancePoint.text = getString(R.string.balance_point_text, balance_point)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
