@@ -72,11 +72,11 @@ class MainActivity : AppCompatActivity() {
         tvD = findViewById(R.id.tvD)
 
         seekBarBalancePoint.max = 40
-        seekBarBalancePoint.progress = 30
+        seekBarBalancePoint.progress = 10
         seekBarP.max = 100
         seekBarP.progress = 20
         seekBarI.max = 500
-        seekBarI.progress = 200
+        seekBarI.progress = 180
         seekBarD.max = 50
         seekBarD.progress = 12
     }

@@ -1,167 +1,203 @@
 #include <PID_v1.h>
-#include <LMotorController.h>
-#include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
 #include <SoftwareSerial.h>
+#include <math.h>
 
-#define MIN_ABSOLUTE_SPEED 10
+const uint8_t MOTOR1_PIN1 = 6; // IN1
+const uint8_t MOTOR1_PIN2 = 7; // IN2
+const uint8_t MOTOR2_PIN1 = 8; // IN3
+const uint8_t MOTOR2_PIN2 = 9; // IN4
+const uint8_t MOTOR1_ENABLE = 5; // ENA
+const uint8_t MOTOR2_ENABLE = 10; // ENB
+const uint8_t BLUETOOTH_TX = A3;
+const uint8_t BLUETOOTH_RX = A2;
+
+const uint8_t MIN_MOTOR_SPEED = 30;
+const uint8_t MAX_MOTOR_SPEED = 255;
+const uint16_t TURN_DURATION = 150;
+const uint8_t TURN_SPEED = 100;
 
 MPU6050 mpu;
-SoftwareSerial Bluetooth(A2, A3); // TX, RX
 
 bool dmpReady = false;
+uint8_t mpuIntStatus;
+uint16_t packetSize;
+uint16_t fifoCount;
 uint8_t fifoBuffer[64];
-
-Quaternion q; // [w, x, y, z]
-VectorFloat gravity; // [x, y, z]
-float ypr[3]; // [yaw, pitch, roll]
-
-// PID
-double angle = -7;
-double input, output;
-double powerLimit1 = 0.7;
-double powerLimit2 = 0.6;
-
-double Kp = 20;   
-double Kd = 0.8;
-double Ki = 180;
-PID pid(&input, &output, &angle, Kp, Ki, Kd, DIRECT);
-
-const int motor1Pin1 = 6; // IN1
-const int motor1Pin2 = 7; // IN2
-const int motor2Pin1 = 8; // IN3
-const int motor2Pin2 = 9; // IN4
-const int enable1Pin = 5; // ENA
-const int enable2Pin = 10; // ENB 
-
+Quaternion quaternion;
+VectorFloat gravity;
+float ypr[3];
 volatile bool mpuInterrupt = false;
-void dmpDataReady()
-{
+
+SoftwareSerial Bluetooth(BLUETOOTH_RX, BLUETOOTH_TX);
+String command = "";
+
+double targetAngle = -5;
+double originalAngle = targetAngle;
+double input, output;
+double Kp = 20;
+double Ki = 180;
+double Kd = 1.2;
+PID pid(&input, &output, &targetAngle, Kp, Ki, Kd, DIRECT);
+
+double powerLimit1 = 0.6;
+double powerLimit2 = 0.5;
+
+bool isTurning = false;
+int8_t turnDirection = 0; // -1: left, 0: none, 1: right
+unsigned long turnStartTime = 0;
+
+void dmpDataReady() {
   mpuInterrupt = true;
 }
 
-void setup()
-{
-  Serial.begin(9600);
+void setup() {
   Bluetooth.begin(9600);
-
-  pinMode(motor1Pin1, OUTPUT);
-  pinMode(motor1Pin2, OUTPUT);
-  pinMode(motor2Pin1, OUTPUT);
-  pinMode(motor2Pin2, OUTPUT);
-  pinMode(enable1Pin, OUTPUT);
-  pinMode(enable2Pin, OUTPUT);
+  
+  pinMode(MOTOR1_PIN1, OUTPUT);
+  pinMode(MOTOR1_PIN2, OUTPUT);
+  pinMode(MOTOR2_PIN1, OUTPUT);
+  pinMode(MOTOR2_PIN2, OUTPUT);
+  pinMode(MOTOR1_ENABLE, OUTPUT);
+  pinMode(MOTOR2_ENABLE, OUTPUT);
 
   mpu.initialize();
   
-  mpu.setXAccelOffset(540);
-  mpu.setYAccelOffset(1301);
-  mpu.setZAccelOffset(1326);
-  mpu.setXGyroOffset(76);
-  mpu.setYGyroOffset(-46);
-  mpu.setZGyroOffset(31);
+  mpu.setXAccelOffset(-2352);
+  mpu.setYAccelOffset(-1055);
+  mpu.setZAccelOffset(1196);
+  mpu.setXGyroOffset(180);
+  mpu.setYGyroOffset(-9);
+  mpu.setZGyroOffset(58);
 
-  if (mpu.dmpInitialize() == 0)
-  {
+  if (mpu.dmpInitialize() == 0) {
     mpu.setDMPEnabled(true);
     attachInterrupt(0, dmpDataReady, RISING);
+    mpuIntStatus = mpu.getIntStatus();
     dmpReady = true;
+    packetSize = mpu.dmpGetFIFOPacketSize();
 
     pid.SetMode(AUTOMATIC);
     pid.SetSampleTime(10);
-    pid.SetOutputLimits(-255, 255); 
-  }
-  else
-  {
-    Serial.print("Failed to initialize dmp!");
+    pid.SetOutputLimits(-MAX_MOTOR_SPEED, MAX_MOTOR_SPEED); 
   }
 }
 
-void loop()
-{
-  if (!dmpReady) return;
+void processBluetoothCommand() {
+  while (Bluetooth.available()) {
+    char incomingChar = Bluetooth.read();
 
-  if (Bluetooth.available())
-  {
-    char command = Bluetooth.read();
-    switch (command)
-    {
-      case 'F':
-        Bluetooth.println("Moving the robot forward");
-        moveForward();
-        break;
-      case 'B':
-        Bluetooth.println("Moving the robot backward");
-        moveBackward();
-        break;
-      case 'R':
-        Bluetooth.println("Turning the robot right");
-        turnRight();
-        break;
-      case 'L':
-        Bluetooth.println("Turning the robot left");
-        turnLeft();
-        break;
-      case 'S':
-        Bluetooth.println("Balancing in place");
-        balance(0);
-      default:
-        Bluetooth.println("Command not recognized");
-        break;
+    if (incomingChar == '\n') {
+      handleCommand(command);
+      command = "";
+    } 
+    else command += incomingChar;
+  }
+}
+
+void handleCommand(String command) {
+  if (command.startsWith("F")) 
+    targetAngle = originalAngle - 0.8;
+  else if (command.startsWith("B"))
+    targetAngle = originalAngle + 0.8;
+  else if (command.startsWith("R")) {
+    initiateTurn(1);
+  } else if (command.startsWith("L")) {
+    initiateTurn(-1);
+  } else if (command.startsWith("S")) {
+    targetAngle = originalAngle;
+    turnDirection = 0;
+    isTurning = false;
+  } else if (command.startsWith("A")) {
+    targetAngle = command.substring(1).toDouble();
+    originalAngle = targetAngle;
+  } else if (command.startsWith("P")) {
+    Kp = command.substring(1).toDouble();
+    pid.SetTunings(Kp, Ki, Kd);
+  } else if (command.startsWith("I")) {
+    Ki = command.substring(1).toDouble();
+    pid.SetTunings(Kp, Ki, Kd);
+  } else if (command.startsWith("D")) {
+    Kd = command.substring(1).toDouble();
+    pid.SetTunings(Kp, Ki, Kd);
+  }
+}
+
+void initiateTurn(int8_t direction) {
+  isTurning = true;
+  turnDirection = direction;
+  turnStartTime = millis();
+}
+
+void loop() {
+  if (!dmpReady) return;
+  
+  while (!mpuInterrupt && fifoCount < packetSize) {
+    pid.Compute();    
+    motorSpeed(output);
+
+    if (isTurning) {
+      if (millis() - turnStartTime < TURN_DURATION) {
+        turn(output, turnDirection);
+      } else {
+        isTurning = false;
+        turnDirection = 0;
+      }
     }
   }
 
-  if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
-  {
-    mpu.dmpGetQuaternion(&q, fifoBuffer);
-    mpu.dmpGetGravity(&gravity, &q);
-    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+  mpuInterrupt = false;
+  mpuIntStatus = mpu.getIntStatus();
 
-    input = ypr[1] * 180/M_PI;
-    Serial.println(input);
-    pid.Compute();
+  fifoCount = mpu.getFIFOCount();
 
-    balance(output);
+  if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+    mpu.resetFIFO();
   }
+  else if (mpuIntStatus & 0x02) {
+    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+
+    mpu.getFIFOBytes(fifoBuffer, packetSize);
+    
+    fifoCount -= packetSize;
+
+    mpu.dmpGetQuaternion(&quaternion, fifoBuffer);
+    mpu.dmpGetGravity(&gravity, &quaternion);
+    mpu.dmpGetYawPitchRoll(ypr, &quaternion, &gravity);
+    input = ypr[1] * RAD_TO_DEG;
+  }
+
+  processBluetoothCommand();
 }
 
-void balance(int output)
-{
-  // if (output > 0)
-  // {
-  //   digitalWrite(motor1Pin1, HIGH);
-  //   digitalWrite(motor1Pin2, LOW);
-  //   digitalWrite(motor2Pin1, HIGH);
-  //   digitalWrite(motor2Pin2, LOW);
-  // }
-  // else
-  // {
-  //   digitalWrite(motor1Pin1, LOW);
-  //   digitalWrite(motor1Pin2, HIGH);
-  //   digitalWrite(motor2Pin1, LOW);
-  //   digitalWrite(motor2Pin2, HIGH);
-  // }
+void setMotorDirection(int pin1, int pin2, bool isForward) {
+  digitalWrite(pin1, isForward ? HIGH : LOW);
+  digitalWrite(pin2, isForward ? LOW : HIGH);
+}
 
-  // output = abs(output);
+void turn(double balanceOutput, int turnDirection) {
+  double leftMotorSpeed = balanceOutput + (TURN_SPEED * -turnDirection);
+  double rightMotorSpeed = balanceOutput + (TURN_SPEED * turnDirection);
+
+  setMotorDirection(MOTOR1_PIN1, MOTOR1_PIN2, leftMotorSpeed > 0);
+  setMotorDirection(MOTOR2_PIN1, MOTOR2_PIN2, rightMotorSpeed > 0);
+
+  int adjustedPower1 = map(abs(leftMotorSpeed), 0, MAX_MOTOR_SPEED + TURN_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
+  int adjustedPower2 = map(abs(rightMotorSpeed), 0, MAX_MOTOR_SPEED + TURN_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
   
-  // analogWrite(enable1Pin, output * powerLimit1);
-  // analogWrite(enable2Pin, output * powerLimit2);
+  analogWrite(MOTOR1_ENABLE, adjustedPower1 * powerLimit1 / 2);
+  analogWrite(MOTOR2_ENABLE, adjustedPower2 * powerLimit2 / 2);
+}
 
-  if (output < 0)
-  {
-    output = min(output, -1*MIN_ABSOLUTE_SPEED);
-  }
-  else if (output > 0)
-  {
-    output = max(output, MIN_ABSOLUTE_SPEED);
-  }
+void motorSpeed(double balanceOutput) {
+  if (balanceOutput < 0) balanceOutput = min(balanceOutput, -1 * MIN_MOTOR_SPEED);
+  else if (balanceOutput > 0) balanceOutput = max(balanceOutput, MIN_MOTOR_SPEED);
 
-  int realOutput = map(abs(output), 0, 255, MIN_ABSOLUTE_SPEED, 255);
+  int adjustedPower = map(abs(balanceOutput), 0, MAX_MOTOR_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
 
-  digitalWrite(motor1Pin1, output > 0 ? HIGH : LOW);
-  digitalWrite(motor1Pin2, output > 0 ? LOW : HIGH);
-  digitalWrite(motor2Pin1, output > 0 ? HIGH : LOW);
-  digitalWrite(motor2Pin2, output > 0 ? LOW : HIGH);
-  analogWrite(enable1Pin, realOutput * powerLimit1);
-  analogWrite(enable2Pin, realOutput * powerLimit2);
+  setMotorDirection(MOTOR1_PIN1, MOTOR1_PIN2, balanceOutput > 0);
+  setMotorDirection(MOTOR2_PIN1, MOTOR2_PIN2, balanceOutput > 0);
+
+  analogWrite(MOTOR1_ENABLE, adjustedPower * powerLimit1);
+  analogWrite(MOTOR2_ENABLE, adjustedPower * powerLimit2);
 }
