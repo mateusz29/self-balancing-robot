@@ -21,12 +21,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var deviceListView: ListView
+    private lateinit var btnSendBalancePoint: Button
+    private lateinit var btnSendP: Button
+    private lateinit var btnSendI: Button
+    private lateinit var btnSendD: Button
     private lateinit var btnScan: Button
     private lateinit var btnForward: Button
     private lateinit var btnBackward: Button
     private lateinit var btnLeft: Button
     private lateinit var btnRight: Button
     private lateinit var btnStop: Button
+    private lateinit var btnResetBalancePoint: Button
+    private lateinit var btnResetP: Button
+    private lateinit var btnResetI: Button
+    private lateinit var btnResetD: Button
 
     private lateinit var seekBarBalancePoint: SeekBar
     private lateinit var seekBarP: SeekBar
@@ -39,6 +47,14 @@ class MainActivity : AppCompatActivity() {
 
     private var bluetoothSocket: BluetoothSocket? = null
     private val UUID_HC05 = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+    companion object {
+        const val DEFAULT_BALANCE_POINT_PROGRESS = 20
+        const val DEFAULT_P_PROGRESS = 20
+        const val DEFAULT_I_PROGRESS = 180
+        const val DEFAULT_D_PROGRESS = 12
+        const val DEFAULT_BALANCE_POINT_VALUE = -5.0
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,11 +71,19 @@ class MainActivity : AppCompatActivity() {
     private fun initializeUI() {
         deviceListView = findViewById(R.id.deviceListView)
         btnScan = findViewById(R.id.btnScan)
+        btnSendBalancePoint = findViewById(R.id.btnSendBalancePoint)
+        btnSendP = findViewById(R.id.btnSendP)
+        btnSendI = findViewById(R.id.btnSendI)
+        btnSendD = findViewById(R.id.btnSendD)
         btnForward = findViewById(R.id.btnForward)
         btnBackward = findViewById(R.id.btnBackward)
         btnLeft = findViewById(R.id.btnLeft)
         btnRight = findViewById(R.id.btnRight)
         btnStop = findViewById(R.id.btnStop)
+        btnResetBalancePoint = findViewById(R.id.btnResetBalancePoint)
+        btnResetP = findViewById(R.id.btnResetP)
+        btnResetI = findViewById(R.id.btnResetI)
+        btnResetD = findViewById(R.id.btnResetD)
 
         seekBarBalancePoint = findViewById(R.id.seekBarBalancePoint)
         seekBarP = findViewById(R.id.seekBarP)
@@ -72,13 +96,13 @@ class MainActivity : AppCompatActivity() {
         tvD = findViewById(R.id.tvD)
 
         seekBarBalancePoint.max = 40
-        seekBarBalancePoint.progress = 10
+        seekBarBalancePoint.progress = DEFAULT_BALANCE_POINT_PROGRESS
         seekBarP.max = 100
-        seekBarP.progress = 20
+        seekBarP.progress = DEFAULT_P_PROGRESS
         seekBarI.max = 500
-        seekBarI.progress = 180
+        seekBarI.progress = DEFAULT_I_PROGRESS
         seekBarD.max = 50
-        seekBarD.progress = 12
+        seekBarD.progress = DEFAULT_D_PROGRESS
     }
 
     private fun setupClickListeners() {
@@ -96,22 +120,40 @@ class MainActivity : AppCompatActivity() {
         btnRight.setOnClickListener { sendCommand("R\n") }
         btnStop.setOnClickListener { sendCommand("S\n") }
 
-        findViewById<Button>(R.id.btnSendBalancePoint).setOnClickListener {
-            val balance_point = (seekBarBalancePoint.progress - 20) / 2.0
+        btnResetBalancePoint.setOnClickListener {
+            seekBarBalancePoint.progress = DEFAULT_BALANCE_POINT_PROGRESS
+            sendCommand("A${DEFAULT_BALANCE_POINT_VALUE}\n")
+        }
+
+        btnSendBalancePoint.setOnClickListener {
+            val balance_point = (seekBarBalancePoint.progress - 20) / 2.0 - 5
             sendCommand("A$balance_point\n")
         }
 
-        findViewById<Button>(R.id.btnSendP).setOnClickListener {
-            val p = seekBarP.progress
-            sendCommand("P$p\n")
+        btnResetP.setOnClickListener {
+            seekBarP.progress = DEFAULT_P_PROGRESS
+            sendCommand("P${DEFAULT_P_PROGRESS}\n")
         }
 
-        findViewById<Button>(R.id.btnSendI).setOnClickListener {
-            val i = seekBarI.progress
-            sendCommand("I$i\n")
+        btnSendP.setOnClickListener {
+            sendCommand("P${seekBarP.progress}\n")
         }
 
-        findViewById<Button>(R.id.btnSendD).setOnClickListener {
+        btnResetI.setOnClickListener {
+            seekBarI.progress = DEFAULT_I_PROGRESS
+            sendCommand("I${DEFAULT_I_PROGRESS}\n")
+        }
+
+        btnSendI.setOnClickListener {
+            sendCommand("I${seekBarI.progress}\n")
+        }
+
+        btnResetD.setOnClickListener {
+            seekBarD.progress = DEFAULT_D_PROGRESS
+            sendCommand("D${DEFAULT_D_PROGRESS / 10.0}\n")
+        }
+
+        btnSendD.setOnClickListener {
             val dValue = seekBarD.progress / 10.0
             sendCommand("D%.1f\n".format(dValue))
         }

@@ -28,7 +28,7 @@ String command = "";
 
 const uint8_t MIN_MOTOR_SPEED = 30;
 const uint8_t MAX_MOTOR_SPEED = 255;
-const uint16_t TURN_DURATION = 150;
+const uint16_t TURN_DURATION = 50;
 const uint8_t TURN_SPEED = 100;
 double powerLimit1 = 0.6;
 double powerLimit2 = 0.5;
@@ -90,9 +90,9 @@ void initiateTurn(int8_t direction) {
 
 void handleCommand(String command) {
   if (command.startsWith("F")) 
-    targetAngle = originalAngle - angleOffset;
+    targetAngle = targetAngle - angleOffset;
   else if (command.startsWith("B"))
-    targetAngle = originalAngle + angleOffset;
+    targetAngle = targetAngle + angleOffset;
   else if (command.startsWith("R")) {
     initiateTurn(1);
   } else if (command.startsWith("L")) {
@@ -134,15 +134,15 @@ void setMotorDirection(int pin1, int pin2, bool isForward) {
 }
 
 void turn(double balanceOutput, int turnDirection) {
-  double leftMotorSpeed = balanceOutput + (TURN_SPEED * -turnDirection);
-  double rightMotorSpeed = balanceOutput + (TURN_SPEED * turnDirection);
+  double leftMotorSpeed = TURN_SPEED * -turnDirection;
+  double rightMotorSpeed = TURN_SPEED * turnDirection;
 
   setMotorDirection(MOTOR1_PIN1, MOTOR1_PIN2, leftMotorSpeed > 0);
   setMotorDirection(MOTOR2_PIN1, MOTOR2_PIN2, rightMotorSpeed > 0);
 
-  int adjustedPower1 = map(abs(leftMotorSpeed), 0, MAX_MOTOR_SPEED + TURN_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
-  int adjustedPower2 = map(abs(rightMotorSpeed), 0, MAX_MOTOR_SPEED + TURN_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
-  
+  int adjustedPower1 = map(abs(leftMotorSpeed), 0, MAX_MOTOR_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
+  int adjustedPower2 = map(abs(rightMotorSpeed), 0, MAX_MOTOR_SPEED, MIN_MOTOR_SPEED, MAX_MOTOR_SPEED);
+
   analogWrite(MOTOR1_ENABLE, adjustedPower1 * powerLimit1 / 2);
   analogWrite(MOTOR2_ENABLE, adjustedPower2 * powerLimit2 / 2);
 }
