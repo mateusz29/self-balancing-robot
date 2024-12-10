@@ -116,7 +116,6 @@ class MainActivity : AppCompatActivity() {
             sendCommand("D%.1f\n".format(dValue))
         }
 
-
         deviceListView.setOnItemClickListener { _, _, position, _ ->
             val device = deviceListView.adapter.getItem(position) as BluetoothDevice
             connectToDevice(device)
